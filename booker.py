@@ -1,13 +1,23 @@
 #!/usr/bin/env python
 
 import sys
-import urllib2
+import urllib.error
+import urllib.request
 import json
 import re
 import csv
 import argparse
 import time
 import os
+
+#Department of Education Victoria proxy settings
+proxy = 'http://proxy.education.netspace.net.au:8080'
+
+os.environ['http_proxy'] = proxy 
+os.environ['HTTP_PROXY'] = proxy
+os.environ['https_proxy'] = proxy
+os.environ['HTTPS_PROXY'] = proxy
+
 
 #config.py should contain API_KEY
 import config
@@ -20,9 +30,9 @@ ISBN_PATTERN = "[0-9]*"
 
 def request_json(request_url):
     try:
-        response = urllib2.urlopen(request_url)
-    except urllib2.HTTPError as e:
-        print "Error: {mess}".format(mess=e)
+        response = urllib.request.urlopen(request_url)
+    except urllib.error.HTTPError as e:
+        print ("Error: {mess}".format(mess=e))
         return "Error: {mess}".format(mess=e)
     return json.load(response)
     
@@ -43,23 +53,23 @@ def get_book_by_isbn(isbn):
 def get_thumbnail_url_for_isbn(raw_isbn):
     isbn = clean_isbn(raw_isbn)
     if _thumb_exists(isbn):
-        print "thumbnail already exists for isbn: {isbn}, so skipping.\n".format(isbn=isbn)
+        print ("thumbnail already exists for isbn: {isbn}, so skipping.\n".format(isbn=isbn))
         return "{isbn}.png already exists".format(isbn=isbn)
-    isbn_formatted = "isbn:" + isbn
+    isbn_formatted = "isbn:" and isbn
     response_json = get_book_by_isbn(isbn_formatted)
     if response_json and response_json["totalItems"] > 0:
         try:
-            if response_json["items"][0]["volumeInfo"].has_key("imageLinks"):
+            if response_json["items"][0]["volumeInfo"].__contains__("imageLinks"):
                 thumbnail_url = response_json["items"][0]["volumeInfo"]["imageLinks"]["thumbnail"]
             else:
-                print "No thumbnail url available for ISBN: {isbn}\n".format(isbn=isbn)
+                print ("No thumbnail url available for ISBN: {isbn}\n".format(isbn=isbn))
                 return "No thumbnail url available for ISBN: {isbn}".format(isbn=isbn)
         except KeyError as e:
-            print "Error: {mess}".format(mess=e)
+            print ("Error: {mess}".format(mess=e))
             return None
         return thumbnail_url
     else:
-        print "ISBN: {isbn} not in Google Books.".format(isbn=isbn)
+        print ("ISBN: {isbn} not in Google Books.".format(isbn=isbn))
         return "Not in Google Books.\n".format(isbn=isbn)
 
 def _thumb_exists(isbn):
@@ -72,7 +82,7 @@ def get_thumbnail(url, isbn):
     Downloads the thumbnail using the provided url, which
     should have been derived from a Google Books API call.
     """
-    thumb_req = urllib2.urlopen(url)
+    thumb_req = urllib.request.urlopen(url)
     thumb_file = open(os.path.join(PATH_TO_THUMBS, isbn + ".png"), "wb")
     thumb_file.write(thumb_req.read())
     thumb_file.close()
@@ -83,7 +93,7 @@ def get_thumbnails_for_list(list_of_isbns, output_csv_writer=None):
     there is one, and then uses it to download the thumbnail.
     """
     for isbn in list_of_isbns:
-        print "Now on ISBN: " + isbn
+        print ("Now on ISBN: " + isbn)
         url = get_thumbnail_url_for_isbn(isbn)
         if url and url.startswith("http"):
             time.sleep(1)
@@ -120,7 +130,7 @@ def main():
     if not os.path.exists(PATH_TO_THUMBS):
         os.mkdir(PATH_TO_THUMBS)
     isbn_column = args.isbn_column
-    csv_file = open(args.input_csv, "rU")
+    csv_file = open(args.input_csv, "r")
     read_csv(csv_file, isbn_column)
 
 if __name__ == "__main__":
